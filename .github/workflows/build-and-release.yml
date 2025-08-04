@@ -209,7 +209,7 @@ jobs:
           - `host-monitor-darwin-arm64` - macOS Apple Silicon
           
           ## Docker Image
-          - `stefanheim/host-monitor:latest` - Multi-Arch (amd64/arm64)
+          - `stefanheim/host-monitor:latest` - Linux amd64
           - `stefanheim/host-monitor:main` - Latest main branch
           - `stefanheim/host-monitor:sha-${{ github.sha }}` - Specific commit
           
