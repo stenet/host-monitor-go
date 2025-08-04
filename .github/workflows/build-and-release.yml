@@ -1,0 +1,141 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            ext: ""
+          - os: linux
+            arch: arm64
+            ext: ""
+          - os: windows
+            arch: amd64
+            ext: ".exe"
+          - os: darwin
+            arch: amd64
+            ext: ""
+          - os: darwin
+            arch: arm64
+            ext: ""
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Get dependencies
+      run: go mod download
+
+    - name: Build
+      env:
+        GOOS: ${{ matrix.os }}
+        GOARCH: ${{ matrix.arch }}
+        CGO_ENABLED: 0
+      run: |
+        mkdir -p dist
+        go build -ldflags "-w -s -X main.version=${{ github.ref_name }}" -o dist/host-monitor-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }} .
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: host-monitor-${{ matrix.os }}-${{ matrix.arch }}
+        path: dist/host-monitor-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Run tests
+      run: go test -v ./...
+
+    - name: Run go vet
+      run: go vet ./...
+
+    - name: Run go fmt check
+      run: |
+        if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+          echo "Go code is not formatted:"
+          gofmt -s -l .
+          exit 1
+        fi
+
+  release:
+    needs: [build, test]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+
+    - name: Generate release tag
+      id: tag
+      run: |
+        # Generiere Tag basierend auf Datum und Commit-Hash
+        TAG="v$(date +%Y.%m.%d)-$(git rev-parse --short HEAD)"
+        echo "tag=$TAG" >> $GITHUB_OUTPUT
+        echo "Generated tag: $TAG"
+
+    - name: Create release directory
+      run: |
+        mkdir -p release
+        # Kopiere alle Artifacts in release Verzeichnis
+        find . -name "host-monitor-*-*" -type f -exec cp {} release/ \;
+        ls -la release/
+
+    - name: Create release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.tag.outputs.tag }}
+        name: Release ${{ steps.tag.outputs.tag }}
+        body: |
+          🚀 **Automatisches Release vom main Branch**
+          
+          ## Änderungen
+          - Commit: ${{ github.sha }}
+          - Branch: ${{ github.ref_name }}
+          
+          ## Verfügbare Binaries
+          - `host-monitor-linux-amd64` - Linux x64
+          - `host-monitor-linux-arm64` - Linux ARM64
+          - `host-monitor-windows-amd64.exe` - Windows x64
+          - `host-monitor-darwin-amd64` - macOS Intel
+          - `host-monitor-darwin-arm64` - macOS Apple Silicon
+          
+          ## Installation
+          1. Binary für deine Plattform herunterladen
+          2. Ausführbar machen: `chmod +x host-monitor-*`
+          3. Ausführen: `./host-monitor-* --help`
+          
+          Automatisch generiert am $(date)
+        files: release/*
+        draft: false
+        prerelease: false
+        generate_release_notes: true
