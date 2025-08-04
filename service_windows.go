@@ -44,10 +44,7 @@ func (ws *windowsService) Execute(args []string, r <-chan svc.ChangeRequest, s c
 }
 
 func (ws *windowsService) runMonitoring(stopCh <-chan struct{}) {
-	hostname, err := os.Hostname()
-	if err != nil {
-		hostname = "unknown"
-	}
+	hostname := getHostname()
 
 	prevNetStats := getNetworkStats()
 	prevCPUStats := getCPUStats()
