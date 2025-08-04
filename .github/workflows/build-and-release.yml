@@ -12,36 +12,28 @@ permissions:
 
 jobs:
   build:
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         include:
           - os: linux
             arch: amd64
             ext: ""
-            runner: ubuntu-latest
-            cgo: "1"
-          - os: linux
-            arch: arm64
-            ext: ""
-            runner: ubuntu-latest
-            cgo: "1"
           - os: windows
             arch: amd64
             ext: ".exe"
-            runner: ubuntu-latest
-            cgo: "0"
+    
+  build-macos:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        include:
           - os: darwin
             arch: amd64
             ext: ""
-            runner: macos-latest
-            cgo: "1"
           - os: darwin
             arch: arm64
             ext: ""
-            runner: macos-latest
-            cgo: "1"
-    
-    runs-on: ${{ matrix.runner }}
 
     steps:
     - uses: actions/checkout@v4
@@ -58,7 +50,7 @@ jobs:
       env:
         GOOS: ${{ matrix.os }}
         GOARCH: ${{ matrix.arch }}
-        CGO_ENABLED: ${{ matrix.cgo }}
+        CGO_ENABLED: "1"
       run: |
         mkdir -p dist
         go build -ldflags "-w -s -X main.version=${{ github.ref_name }}" -o dist/host-monitor-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }} .
@@ -94,7 +86,7 @@ jobs:
         fi
 
   release:
-    needs: [build, test]
+    needs: [build, build-macos, test]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     
