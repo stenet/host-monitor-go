@@ -140,7 +140,6 @@ func installWindowsService(serviceName, seqURL string, interval time.Duration, d
 	}
 	defer s.Close()
 
-
 	fmt.Printf("Service '%s' erfolgreich installiert mit Seq-URL: %s\n", serviceName, seqURL)
 	fmt.Printf("Interval: %s, Debug-Modus: %t\n", interval, debug)
 	fmt.Println("Starten Sie den Service mit: sc start", serviceName)

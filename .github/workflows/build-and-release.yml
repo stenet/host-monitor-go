@@ -47,13 +47,13 @@ jobs:
       env:
         GOOS: ${{ matrix.os }}
         GOARCH: ${{ matrix.arch }}
-        CGO_ENABLED: 0
+        CGO_ENABLED: ${{ matrix.os == 'darwin' && '1' || '0' }}
       run: |
         mkdir -p dist
         go build -ldflags "-w -s -X main.version=${{ github.ref_name }}" -o dist/host-monitor-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }} .
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: host-monitor-${{ matrix.os }}-${{ matrix.arch }}
         path: dist/host-monitor-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}
@@ -93,7 +93,9 @@ jobs:
         fetch-depth: 0
 
     - name: Download all artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
 
     - name: Generate release tag
       id: tag
@@ -106,8 +108,8 @@ jobs:
     - name: Create release directory
       run: |
         mkdir -p release
-        # Kopiere alle Artifacts in release Verzeichnis
-        find . -name "host-monitor-*-*" -type f -exec cp {} release/ \;
+        # Kopiere alle Artifacts in release Verzeichnis (v4 structure)
+        find artifacts -name "host-monitor-*-*" -type f -exec cp {} release/ \;
         ls -la release/
 
     - name: Create release
