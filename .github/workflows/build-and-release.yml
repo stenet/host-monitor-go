@@ -22,6 +22,32 @@ jobs:
           - os: windows
             arch: amd64
             ext: ".exe"
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Get dependencies
+      run: go mod download
+
+    - name: Build
+      env:
+        GOOS: ${{ matrix.os }}
+        GOARCH: ${{ matrix.arch }}
+        CGO_ENABLED: ${{ matrix.os == 'linux' && '1' || '0' }}
+      run: |
+        mkdir -p dist
+        go build -ldflags "-w -s -X main.version=${{ github.ref_name }}" -o dist/host-monitor-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }} .
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: host-monitor-${{ matrix.os }}-${{ matrix.arch }}
+        path: dist/host-monitor-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}
     
   build-macos:
     runs-on: macos-latest
