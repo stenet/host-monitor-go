@@ -60,7 +60,7 @@ jobs:
         path: dist/host-monitor-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}
     
   build-macos:
-    runs-on: macos-latest
+    runs-on: macos-15
     strategy:
       matrix:
         include:
