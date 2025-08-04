@@ -63,7 +63,7 @@ VERSION=1.0.0 ./build.sh
 ./host-monitor.exe --uninstall
 
 # Service-Status prüfen
-sc query SystemMonitor
+sc query HostMonitor
 ```
 
 ### Docker Container
@@ -106,7 +106,7 @@ services:
 | `--debug` | Debug-Modus (Konsolen-Ausgabe) | `false` |
 | `--install` | Windows Service installieren | - |
 | `--uninstall` | Windows Service deinstallieren | - |
-| `--service-name` | Name des Windows Service | `SystemMonitor` |
+| `--service-name` | Name des Windows Service | `HostMonitor` |
 
 ### Umgebungsvariablen
 

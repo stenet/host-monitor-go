@@ -16,30 +16,30 @@ Dies ist ein System-Monitoring-Tool in Go, das Systemmetriken sammelt und an ein
 VERSION=1.2.0 ./build.sh
 
 # Build für aktuelle Plattform
-go build -o system-monitor .
+go build -o host-monitor .
 
 # Build mit Optimierungen (ohne Debug-Infos)
-go build -ldflags "-w -s" -o system-monitor .
+go build -ldflags "-w -s" -o host-monitor .
 ```
 
 ## Windows Service Installation
 
 ```bash
 # Service installieren (Windows)
-./system-monitor.exe --install
+./host-monitor.exe --install
 
 # Service mit anderem Namen installieren
-./system-monitor.exe --install --service-name MyMonitor
+./host-monitor.exe --install --service-name MyMonitor
 
 # Service deinstallieren
-./system-monitor.exe --uninstall
+./host-monitor.exe --uninstall
 
 # Service Status überprüfen
-sc query SystemMonitor
+sc query HostMonitor
 
 # Service manuell starten/stoppen
-sc start SystemMonitor
-sc stop SystemMonitor
+sc start HostMonitor
+sc stop HostMonitor
 ```
 
 ## Entwicklungs-Befehle

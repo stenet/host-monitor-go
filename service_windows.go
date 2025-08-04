@@ -85,7 +85,7 @@ func runAsWindowsService(debug bool, seqURL string, interval time.Duration) {
 		interval: interval,
 	}
 
-	err := svc.Run("SystemMonitor", service)
+	err := svc.Run("HostMonitor", service)
 	if err != nil {
 		log.Fatalf("Service lief nicht: %v", err)
 	}
@@ -127,7 +127,7 @@ func installWindowsService(serviceName, seqURL string, interval time.Duration, d
 	}
 
 	s, err = m.CreateService(serviceName, serviceArgs, mgr.Config{
-		DisplayName: "System Monitor Service",
+		DisplayName: "Host Monitor Service",
 		Description: "Sammelt Systemmetriken und sendet sie an Seq",
 		StartType:   mgr.StartAutomatic,
 	})

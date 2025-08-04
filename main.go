@@ -59,7 +59,7 @@ func main() {
 	// Windows service flags
 	installService := flag.Bool("install", false, "Install as Windows service")
 	uninstallService := flag.Bool("uninstall", false, "Uninstall Windows service")
-	serviceName := flag.String("service-name", "SystemMonitor", "Windows service name")
+	serviceName := flag.String("service-name", "HostMonitor", "Windows service name")
 
 	flag.Parse()
 

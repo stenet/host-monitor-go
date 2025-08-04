@@ -3,7 +3,7 @@
 
 set -e
 
-APP_NAME="system-monitor"
+APP_NAME="host-monitor"
 VERSION=${VERSION:-"1.0.0"}
 BUILD_DIR="./build"
 

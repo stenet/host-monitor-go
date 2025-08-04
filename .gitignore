@@ -36,10 +36,8 @@ Thumbs.db
 /bin/
 /dist/
 /build/
-system-monitor
-system-monitor.exe
-hostMonitor
-hostMonitor.exe
+host-monitor
+host-monitor.exe
 
 # Log files
 *.log
