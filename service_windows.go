@@ -122,16 +122,17 @@ func installWindowsService(serviceName, seqURL string, interval time.Duration, d
 	}
 
 	// Build service arguments with all parameters
-	serviceArgs := fmt.Sprintf("%s --seq-url \"%s\" --interval %s", exePath, seqURL, interval)
+	var serviceArgs []string
+	serviceArgs = append(serviceArgs, "--seq-url", seqURL, "--interval", interval.String())
 	if debug {
-		serviceArgs += " --debug"
+		serviceArgs = append(serviceArgs, "--debug")
 	}
 
-	s, err = m.CreateService(serviceName, serviceArgs, mgr.Config{
+	s, err = m.CreateService(serviceName, exePath, mgr.Config{
 		DisplayName: "Host Monitor Service",
 		Description: "Sammelt Systemmetriken und sendet sie an Seq",
 		StartType:   mgr.StartAutomatic,
-	})
+	}, serviceArgs...)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Fehler beim Erstellen des Service: %v\n", err)
 		return
