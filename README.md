@@ -90,8 +90,6 @@ services:
     network_mode: host           # Zugriff auf Host-Netzwerk-Interfaces
     volumes:
       - /:/host:ro               # Host-Filesystem für Monitoring (read-only)
-      - /proc:/host/proc:ro      # Host-Prozess-Informationen
-      - /sys:/host/sys:ro        # Host-System-Informationen
     environment:
       - SEQ_URL=http://seq:5341
       - INTERVAL=15s
