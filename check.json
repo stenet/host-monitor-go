@@ -1,0 +1,7 @@
+{
+  "disk": ":/",
+  "processes": [
+    "abc",
+    "def"
+  ]
+}

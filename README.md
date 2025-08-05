@@ -20,7 +20,7 @@ Lade die neueste Version aus den [Releases](../../releases) herunter.
 ### Aus Quellcode kompilieren
 
 ```bash
-git clone https://github.com/USERNAME/host-monitor-go.git
+git clone https://github.com/stenet/host-monitor-go.git
 cd host-monitor-go
 go build -o host-monitor .
 ```
@@ -40,7 +40,7 @@ VERSION=1.0.0 ./build.sh
 ### Grundlegende Verwendung
 
 ```bash
-# Standard-Ausführung (15s Intervall, localhost:5341)
+# Standard-Ausführung (15s Intervall, http://seq:5341)
 ./host-monitor
 
 # Mit angepassten Parametern
@@ -70,10 +70,10 @@ sc query HostMonitor
 
 ```bash
 # Mit Standard-Konfiguration
-docker run -v /:/host:ro ghcr.io/username/host-monitor:latest
+docker run -v /:/host:ro stefanheim/host-monitor:latest
 
 # Mit angepassten Parametern
-docker run -v /:/host:ro -e SEQ_URL=http://seq-server:5341 ghcr.io/username/host-monitor:latest
+docker run -v /:/host:ro -e SEQ_URL=http://seq-server:5341 stefanheim/host-monitor:latest
 ```
 
 ### Docker Compose
@@ -103,7 +103,7 @@ services:
 |-----------|--------------|----------|
 | `--seq-url` | URL des Seq-Servers | `http://seq:5341` |
 | `--interval` | Überwachungsintervall | `15s` |
-| `--debug` | Debug-Modus (Konsolen-Ausgabe) | `false` |
+| `--debug`, `-d` | Debug-Modus (Konsolen-Ausgabe) | `false` |
 | `--install` | Windows Service installieren | - |
 | `--uninstall` | Windows Service deinstallieren | - |
 | `--service-name` | Name des Windows Service | `HostMonitor` |
@@ -115,6 +115,35 @@ services:
 | `SEQ_URL` | URL des Seq-Servers | `http://seq:5341` |
 | `INTERVAL` | Überwachungsintervall | `15s` |
 
+## Konfigurationsdatei (Optional)
+
+Eine optionale `config.json` Datei kann im gleichen Verzeichnis wie die Anwendung erstellt werden, um zusätzliche Überwachungsoptionen zu konfigurieren:
+
+```json
+{
+  "disk": "/custom/path",
+  "processes": [
+    "nginx",
+    "mysql",
+    "redis"
+  ]
+}
+```
+
+### Konfigurationsoptionen
+
+| Option | Beschreibung | Standard |
+|--------|--------------|----------|
+| `disk` | Pfad zur zu überwachenden Disk/Partition | `/` (Linux/macOS) oder `C:\` (Windows) |
+| `processes` | Liste von Prozessnamen zur Überwachung | Keine (keine Prozessüberwachung) |
+
+### Prozessüberwachung
+
+- **Processes_Not_Running_Count**: Anzahl der nicht laufenden Prozesse (0 wenn keine Prozesse konfiguriert)
+- **Processes_Not_Running**: Array mit Namen der nicht laufenden Prozesse (nur wenn welche fehlen)
+- Prozessnamen sind case-insensitive
+- Auf Windows wird `.exe` automatisch ignoriert
+
 ## Überwachte Metriken
 
 ### CPU
@@ -122,24 +151,24 @@ services:
 - Plattform-spezifische Implementierung
 
 ### Memory
-- Gesamter verfügbarer Speicher
-- Verwendeter Speicher
-- Freier Speicher
+- Verwendeter Speicher in MB
 - Auslastung in Prozent
 
 ### Disk
-- Gesamter Speicherplatz
-- Verwendeter Speicherplatz
-- Freier Speicherplatz
+- Freier Speicherplatz in GB
 - Auslastung in Prozent
+- Konfigurierbare Disk/Partition über config.json
 
 ### Netzwerk
-- Bytes gesendet/empfangen
-- Pakete gesendet/empfangen
-- Übertragungsraten
+- Übertragungsraten in Bytes pro Sekunde (RX/TX)
+- Ohne Loopback-Interfaces
 
 ### TCP-Verbindungen
 - Anzahl aktiver TCP-Verbindungen
+
+### Prozesse (Optional)
+- Anzahl der nicht laufenden konfigurierten Prozesse
+- Liste der nicht laufenden Prozesse
 
 ## Entwicklung
 

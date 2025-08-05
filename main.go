@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -15,21 +16,24 @@ import (
 	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/shirou/gopsutil/v3/mem"
 	"github.com/shirou/gopsutil/v3/net"
+	"github.com/shirou/gopsutil/v3/process"
 )
 
 type SystemMetrics struct {
-	Timestamp       string  `json:"@t"`
-	MessageTemplate string  `json:"@mt"`
-	Application     string  `json:"Application"`
-	Hostname        string  `json:"Hostname"`
-	CPUPercent      float64 `json:"CPU_Percent"`
-	MemoryPercent   float64 `json:"Memory_Percent"`
-	MemoryMB        float64 `json:"Memory_MB"`
-	DiskPercent     float64 `json:"Disk_Percent"`
-	DiskFreeGB      float64 `json:"Disk_Free_GB"`
-	NetworkRXBPS    uint64  `json:"Network_RX_BPS"`
-	NetworkTXBPS    uint64  `json:"Network_TX_BPS"`
-	TCPConnections  int     `json:"TCP_Connections"`
+	Timestamp                string   `json:"@t"`
+	MessageTemplate          string   `json:"@mt"`
+	Application              string   `json:"Application"`
+	Hostname                 string   `json:"Hostname"`
+	CPUPercent               float64  `json:"CPU_Percent"`
+	MemoryPercent            float64  `json:"Memory_Percent"`
+	MemoryMB                 float64  `json:"Memory_MB"`
+	DiskPercent              float64  `json:"Disk_Percent"`
+	DiskFreeGB               float64  `json:"Disk_Free_GB"`
+	NetworkRXBPS             uint64   `json:"Network_RX_BPS"`
+	NetworkTXBPS             uint64   `json:"Network_TX_BPS"`
+	TCPConnections           int      `json:"TCP_Connections"`
+	ProcessesNotRunningCount int      `json:"Processes_Not_Running_Count"`
+	ProcessesNotRunning      []string `json:"Processes_Not_Running,omitempty"`
 }
 
 type NetworkStats struct {
@@ -40,6 +44,16 @@ type NetworkStats struct {
 type CPUStats struct {
 	IdleTime  uint64 // in nanoseconds
 	TotalTime uint64 // in nanoseconds
+}
+
+type Config struct {
+	Disk      string   `json:"disk"`
+	Processes []string `json:"processes"`
+}
+
+type ProcessCheckResult struct {
+	NotRunningCount int
+	NotRunning      []string
 }
 
 func main() {
@@ -88,6 +102,9 @@ func main() {
 	// Get hostname
 	hostname := getHostname()
 
+	// Load configuration if available
+	config := loadConfig()
+
 	// Initial measurements
 	prevNetStats := getNetworkStats()
 	prevCPUStats := getCPUStats()
@@ -105,7 +122,7 @@ func main() {
 		timeDiff := currTime.Sub(prevTime).Seconds()
 
 		// Get system metrics
-		metrics := collectMetrics(hostname, prevNetStats, currNetStats, prevCPUStats, currCPUStats, timeDiff)
+		metrics := collectMetrics(hostname, prevNetStats, currNetStats, prevCPUStats, currCPUStats, timeDiff, config)
 
 		if *debug {
 			printDebugMetrics(metrics)
@@ -120,7 +137,7 @@ func main() {
 	}
 }
 
-func collectMetrics(hostname string, prevNet, currNet NetworkStats, prevCPU, currCPU CPUStats, timeDiff float64) SystemMetrics {
+func collectMetrics(hostname string, prevNet, currNet NetworkStats, prevCPU, currCPU CPUStats, timeDiff float64, config *Config) SystemMetrics {
 	// CPU usage - calculate percentage over time interval
 	var cpuUsage float64
 
@@ -149,13 +166,19 @@ func collectMetrics(hostname string, prevNet, currNet NetworkStats, prevCPU, cur
 		memMB = float64(memInfo.Used) / 1024 / 1024
 	}
 
-	// Disk usage (root filesystem)
+	// Disk usage (root filesystem or configured disk)
 	var diskPercent, diskFreeGB float64
 	var diskPath string
-	if runtime.GOOS == "windows" {
-		diskPath = "C:\\"
+
+	// Use configured disk if provided
+	if config != nil && config.Disk != "" {
+		diskPath = config.Disk
 	} else {
-		diskPath = "/"
+		if runtime.GOOS == "windows" {
+			diskPath = "C:\\"
+		} else {
+			diskPath = "/"
+		}
 	}
 
 	diskInfo, err := disk.Usage(diskPath)
@@ -176,19 +199,24 @@ func collectMetrics(hostname string, prevNet, currNet NetworkStats, prevCPU, cur
 	// TCP connections (simplified - actual count may vary by OS)
 	tcpConns := getTCPConnectionCount()
 
+	// Check configured processes
+	processCheckResult := checkProcesses(config)
+
 	return SystemMetrics{
-		Timestamp:       time.Now().Format(time.RFC3339),
-		MessageTemplate: "System Metrics from {Hostname}",
-		Application:     "Monitor",
-		Hostname:        hostname,
-		CPUPercent:      cpuUsage,
-		MemoryPercent:   memPercent,
-		MemoryMB:        memMB,
-		DiskPercent:     diskPercent,
-		DiskFreeGB:      diskFreeGB,
-		NetworkRXBPS:    netRXBPS,
-		NetworkTXBPS:    netTXBPS,
-		TCPConnections:  tcpConns,
+		Timestamp:                time.Now().Format(time.RFC3339),
+		MessageTemplate:          "System Metrics from {Hostname}",
+		Application:              "Monitor",
+		Hostname:                 hostname,
+		CPUPercent:               cpuUsage,
+		MemoryPercent:            memPercent,
+		MemoryMB:                 memMB,
+		DiskPercent:              diskPercent,
+		DiskFreeGB:               diskFreeGB,
+		NetworkRXBPS:             netRXBPS,
+		NetworkTXBPS:             netTXBPS,
+		TCPConnections:           tcpConns,
+		ProcessesNotRunningCount: processCheckResult.NotRunningCount,
+		ProcessesNotRunning:      processCheckResult.NotRunning,
 	}
 }
 
@@ -245,6 +273,10 @@ func printDebugMetrics(metrics SystemMetrics) {
 	fmt.Printf("Network RX: %d Bytes/s\n", metrics.NetworkRXBPS)
 	fmt.Printf("Network TX: %d Bytes/s\n", metrics.NetworkTXBPS)
 	fmt.Printf("TCP Connections: %d\n", metrics.TCPConnections)
+	fmt.Printf("Processes Not Running Count: %d\n", metrics.ProcessesNotRunningCount)
+	if len(metrics.ProcessesNotRunning) > 0 {
+		fmt.Printf("Processes Not Running: %v\n", metrics.ProcessesNotRunning)
+	}
 	fmt.Println("==========================")
 }
 
@@ -294,4 +326,76 @@ func getHostname() string {
 	}
 
 	return "unknown"
+}
+
+func loadConfig() *Config {
+	exe, err := os.Executable()
+	if err != nil {
+		return nil
+	}
+
+	configPath := filepath.Join(filepath.Dir(exe), "config.json")
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		// Config file is optional
+		return nil
+	}
+
+	var config Config
+	if err := json.Unmarshal(data, &config); err != nil {
+		fmt.Fprintf(os.Stderr, "Fehler beim Parsen der config.json: %v\n", err)
+		return nil
+	}
+
+	return &config
+}
+
+func checkProcesses(config *Config) ProcessCheckResult {
+	// If no processes configured, return 0 not running
+	if config == nil || len(config.Processes) == 0 {
+		return ProcessCheckResult{
+			NotRunningCount: 0,
+			NotRunning:      []string{},
+		}
+	}
+
+	// Get all running processes
+	processes, err := process.Processes()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Fehler beim Abrufen der Prozesse: %v\n", err)
+		return ProcessCheckResult{
+			NotRunningCount: len(config.Processes),
+			NotRunning:      config.Processes,
+		}
+	}
+
+	// Create a map of running process names
+	runningProcesses := make(map[string]bool)
+	for _, p := range processes {
+		name, err := p.Name()
+		if err == nil && name != "" {
+			// Normalize process names: remove .exe on Windows
+			if runtime.GOOS == "windows" {
+				name = strings.TrimSuffix(strings.ToLower(name), ".exe")
+			}
+			runningProcesses[strings.ToLower(name)] = true
+		}
+	}
+
+	// Check configured processes
+	notRunning := []string{}
+	for _, procName := range config.Processes {
+		normalizedName := strings.ToLower(procName)
+		if runtime.GOOS == "windows" {
+			normalizedName = strings.TrimSuffix(normalizedName, ".exe")
+		}
+		if !runningProcesses[normalizedName] {
+			notRunning = append(notRunning, procName)
+		}
+	}
+
+	return ProcessCheckResult{
+		NotRunningCount: len(notRunning),
+		NotRunning:      notRunning,
+	}
 }

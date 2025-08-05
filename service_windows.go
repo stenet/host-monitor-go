@@ -45,6 +45,7 @@ func (ws *windowsService) Execute(args []string, r <-chan svc.ChangeRequest, s c
 
 func (ws *windowsService) runMonitoring(stopCh <-chan struct{}) {
 	hostname := getHostname()
+	config := loadConfig()
 
 	prevNetStats := getNetworkStats()
 	prevCPUStats := getCPUStats()
@@ -63,7 +64,7 @@ func (ws *windowsService) runMonitoring(stopCh <-chan struct{}) {
 			currTime := time.Now()
 
 			timeDiff := currTime.Sub(prevTime).Seconds()
-			metrics := collectMetrics(hostname, prevNetStats, currNetStats, prevCPUStats, currCPUStats, timeDiff)
+			metrics := collectMetrics(hostname, prevNetStats, currNetStats, prevCPUStats, currCPUStats, timeDiff, config)
 
 			if ws.debug {
 				printDebugMetrics(metrics)
