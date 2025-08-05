@@ -18,9 +18,14 @@ long get_linux_clock_ticks() {
 import "C"
 
 func getCPUStatsLinux() CPUStats {
-	data, err := os.ReadFile("/proc/stat")
+	// Versuche zuerst /host/proc/stat für Container-Umgebungen
+	data, err := os.ReadFile("/host/proc/stat")
 	if err != nil {
-		return CPUStats{}
+		// Fallback auf Standard /proc/stat
+		data, err = os.ReadFile("/proc/stat")
+		if err != nil {
+			return CPUStats{}
+		}
 	}
 
 	lines := bytes.Split(data, []byte("\n"))
